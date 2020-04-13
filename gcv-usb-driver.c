@@ -22,7 +22,7 @@ static int usb_drv_major = 500;
 static int usb_drv_minor = 0;
 static struct cdev *usb_drv_cdev;
 
-static int usb_drv_open(struct inode *inode, struct file *file) 
+static int usb_drv_open(struct inode* inode, struct file* file) 
 {
 	pr_info("Opening device: %s: \n\n", USB_DRV_NAME);
 	return 0;
@@ -49,7 +49,7 @@ static ssize_t usb_drv_read(struct file *file, char __user* buf, size_t lbuf, lo
 	 return nbytes;
 }
 
-static ssize_t usb_drv_write(struct file *file, char __user* buf, size_t lbuf, loff_t* ppos)
+static ssize_t usb_drv_write(struct file* file, const char __user* buf, size_t lbuf, loff_t* ppos)
 {
 	 int nbytes;
 	 // TODO [versloot]: fix because it is stub
@@ -58,7 +58,7 @@ static ssize_t usb_drv_write(struct file *file, char __user* buf, size_t lbuf, l
 				 "aborting because this is just a stub");
 		 return 0;
 	 }
-	 nbytes = lbuf - copy_to_user(buf, ramdisk + *ppos, lbuf);
+	 nbytes = lbuf - copy_from_user(ramdisk + *ppos, buf,  buf,lbuf);
 	 *ppos += nbytes;
 	 pr_info("\n Writing function, nbytes=%d, pos=%d", nbytes, (int)*ppos);
 	 return nbytes;
@@ -81,7 +81,7 @@ static int __init usb_drv_init(void)
 	register_chrdev_region(first, count, USB_DRV_NAME);
 	usb_drv_cdev = cdev_alloc();
 	cdev_add(usb_drv_cdev, first, count);
-	pr_info("\nSucceeded in registering character device %s\n", USB_DRV_NAME);
+	pr_info("Succeeded in registering character device %s\n", USB_DRV_NAME);
 	return 0;
 }
 
@@ -90,7 +90,7 @@ static void __exit usb_drv_exit(void)
 {
 	cdev_del(usb_drv_cdev);
 	unregister_chrdev_region(first, count);
-	pr_info("\ndevice unregistered: %s\n", USB_DRV_NAME);
+	pr_info("Device unregistered: %s\n", USB_DRV_NAME);
 }
 
 module_init(usb_drv_init);

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+export LANG=C
+if [ -z "$1" ]; then
+	echo Usage: $0 modulebasename >&2
+	exit 1
+fi
+if [ ! -f "$1.c" ]; then
+	echo $0: Cannot find module source $1.c >&2 
+	exit 1
+fi
+
+echo Starting make for module file $1.c
+MYMODULE=$1; export MYMODULE
+
+make ${MYMODULE}.ko 

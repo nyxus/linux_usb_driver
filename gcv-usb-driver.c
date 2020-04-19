@@ -58,7 +58,7 @@ static ssize_t usb_drv_write(struct file* file, const char __user* buf, size_t l
 				 "aborting because this is just a stub");
 		 return 0;
 	 }
-	 nbytes = lbuf - copy_from_user(ramdisk + *ppos, buf,  buf,lbuf);
+	 nbytes = lbuf - copy_from_user(ramdisk + *ppos, buf, lbuf);
 	 *ppos += nbytes;
 	 pr_info("\n Writing function, nbytes=%d, pos=%d", nbytes, (int)*ppos);
 	 return nbytes;
@@ -90,7 +90,7 @@ static void __exit usb_drv_exit(void)
 {
 	cdev_del(usb_drv_cdev);
 	unregister_chrdev_region(first, count);
-	pr_info("Device unregistered: %s\n", USB_DRV_NAME);
+	pr_info("\ndevice unregistered: %s\n", USB_DRV_NAME);
 }
 
 module_init(usb_drv_init);

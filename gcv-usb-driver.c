@@ -5,63 +5,56 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
+#include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/device.h>
 #include <linux/cdev.h>
+#include <linux/miscdevice.h>
+#include <linux/oom.h>
+
+#include <linux/errno.h>
 
 
 #define USB_DRV_NAME "usb-drv-gcv"
 
-
+static struct device *usb_drv_dev;
 static char *ramdisk;
-#define ramdisk_size (size_t) (128*PAGE_SIZE)
+static size_t ramdisk_size = (16*PAGE_SIZE);
 
-static dev_t first;
-static unsigned int count = 1;
-static int usb_drv_major = 500;
-static int usb_drv_minor = 0;
-static struct cdev *usb_drv_cdev;
 
-static int usb_drv_open(struct inode* inode, struct file* file) 
-{
-	pr_info("Opening device: %s: \n\n", USB_DRV_NAME);
+static int usb_drv_open(struct inode* inode, struct file* file) {
+	static int counter;
+	dev_info(usb_drv_dev, "Attempting to open device: %s\n", USB_DRV_NAME);
+	dev_info(usb_drv_dev, "MAJOR: %d, MINOR: %d\n", imajor(inode), iminor(inode));
+
+	counter++;
+
+	dev_info(usb_drv_dev, "Successfully opened device: %s (times: %d, refs: %d)\n", 
+			USB_DRV_NAME, counter, (int) module_refcount(THIS_MODULE));
 	return 0;
 }
 
 static int usb_drv_release(struct inode *inode, struct file *file) 
 {
-	pr_info("Closing  device: %s: \n\n", USB_DRV_NAME);
+	dev_info(usb_drv_dev, "Closing  device: %s: \n", USB_DRV_NAME);
 	return 0;
 }
 
 static ssize_t usb_drv_read(struct file *file, char __user* buf, size_t lbuf, loff_t* ppos)
 {
-	 int nbytes;
-	 // TODO [versloot]: fix because it is stub
-	 if ((lbuf + *ppos) > ramdisk_size){
-		 pr_info("Trying to read past the end of device, "
-				 "aborting because this is just a stub");
-		 return 0;
-	 }
-	 nbytes = lbuf - copy_to_user(buf, ramdisk + *ppos, lbuf);
-	 *ppos += nbytes;
-	 pr_info("\n Reading function, nbytes=%d, pos=%d", nbytes, (int)*ppos);
-	 return nbytes;
+	int nbytes =
+		simple_read_from_buffer(buf, lbuf, ppos, ramdisk, ramdisk_size);
+	dev_info(usb_drv_dev, "Leaving the READ function; nbytes: %d, pos: %d\n", nbytes, (int)*ppos);
+	return nbytes;
 }
 
 static ssize_t usb_drv_write(struct file* file, const char __user* buf, size_t lbuf, loff_t* ppos)
 {
-	 int nbytes;
-	 // TODO [versloot]: fix because it is stub
-	 if ((lbuf + *ppos) > ramdisk_size){
-		 pr_info("Trying to write past the end of device, "
-				 "aborting because this is just a stub");
-		 return 0;
-	 }
-	 nbytes = lbuf - copy_from_user(ramdisk + *ppos, buf, lbuf);
-	 *ppos += nbytes;
-	 pr_info("\n Writing function, nbytes=%d, pos=%d", nbytes, (int)*ppos);
-	 return nbytes;
+	int nbytes =
+		simple_write_to_buffer(ramdisk, ramdisk_size, ppos, buf, lbuf);
+	dev_info(usb_drv_dev, "Leaving the WRITE function; nbytes: %d, pos: %d\n", nbytes, (int)*ppos);
+	return nbytes;
 }
 
 static const struct file_operations usb_drv_fops = 
@@ -71,26 +64,36 @@ static const struct file_operations usb_drv_fops =
 	.write = usb_drv_write,
 	.open = usb_drv_open,
 	.release = usb_drv_release,
+};
 
+static struct miscdevice usb_drv_misc_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = USB_DRV_NAME,
+	.fops = &usb_drv_fops,
 };
 
 static int __init usb_drv_init(void)
 {
 	ramdisk = kmalloc(ramdisk_size, GFP_KERNEL);
-	first = MKDEV(usb_drv_major, usb_drv_minor);
-	register_chrdev_region(first, count, USB_DRV_NAME);
-	usb_drv_cdev = cdev_alloc();
-	cdev_add(usb_drv_cdev, first, count);
-	pr_info("Succeeded in registering character device %s\n", USB_DRV_NAME);
+	if (misc_register(&usb_drv_misc_dev)) {
+		pr_err("Coun't register misc device, "
+				"%d,.\n", usb_drv_misc_dev.minor);
+		kfree(ramdisk);
+		return -EBUSY;
+		
+	}
+
+	usb_drv_dev = usb_drv_misc_dev.this_device;
+	dev_info(usb_drv_dev, "Succeeded in registering character device %s\n", USB_DRV_NAME);
 	return 0;
 }
 
 
 static void __exit usb_drv_exit(void)
 {
-	cdev_del(usb_drv_cdev);
-	unregister_chrdev_region(first, count);
-	pr_info("\ndevice unregistered: %s\n", USB_DRV_NAME);
+	dev_info(usb_drv_dev, "Unregistering character device %s\n", USB_DRV_NAME);
+	misc_deregister(&usb_drv_misc_dev);
+	kfree(ramdisk);
 }
 
 module_init(usb_drv_init);

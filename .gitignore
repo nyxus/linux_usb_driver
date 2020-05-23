@@ -53,3 +53,6 @@ dkms.conf
 
 # Dev IDE/editor files
 *.swp
+
+# Application build folder
+gcv-usb-app/build/

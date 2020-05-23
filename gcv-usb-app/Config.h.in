@@ -1,0 +1,4 @@
+// the configured options and settings for Tutorial
+#define VERSION_MAJOR @Gcv-usb-app_VERSION_MAJOR@
+#define VERSION_MINOR @Gcv-usb-app_VERSION_MINOR@
+#define VERSION_PATCH @Gcv-usb-app_VERSION_PATCH@
